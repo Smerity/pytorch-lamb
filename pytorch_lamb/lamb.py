@@ -43,7 +43,7 @@ class Lamb(Optimizer):
     """
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-6,
-                 weight_decay=0, adam=False):
+                 weight_decay=0, adam=False, min_trust=None):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if not 0.0 <= eps:
@@ -52,9 +52,12 @@ class Lamb(Optimizer):
             raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
         if not 0.0 <= betas[1] < 1.0:
             raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
+        if min_trust and not 0.0 <= min_trust < 1.0:
+            raise ValueError("Minimum trust range from 0 to 1: {}".format(min_trust))
         defaults = dict(lr=lr, betas=betas, eps=eps,
                         weight_decay=weight_decay)
         self.adam = adam
+        self.min_trust = min_trust
         super(Lamb, self).__init__(params, defaults)
 
     def step(self, closure=None):
@@ -114,6 +117,8 @@ class Lamb(Optimizer):
                     trust_ratio = 1
                 else:
                     trust_ratio = weight_norm / adam_norm
+                if self.min_trust:
+                    trust_ratio = max(trust_ratio, self.min_trust)
                 state['weight_norm'] = weight_norm
                 state['adam_norm'] = adam_norm
                 state['trust_ratio'] = trust_ratio
